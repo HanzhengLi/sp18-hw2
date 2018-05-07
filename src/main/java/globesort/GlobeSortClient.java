@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.lang.RuntimeException;
 import java.lang.Exception;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -39,27 +41,30 @@ public class GlobeSortClient {
     }
 
     public void run(Integer[] values) throws Exception {
-        System.out.println("Pinging " + serverStr + "...");
-        double startTimePing = System.nanoTime();
+        long startTimePing = System.currentTimeMillis();
         serverStub.ping(Empty.newBuilder().build());
-        double estimatedTimePing = (System.nanoTime() - startTimePing)/2000000.;
-        System.out.println("Ping successful.");
+        long estimatedTimePing = (System.currentTimeMillis() - startTimePing) / 2;
 
-        System.out.println("Requesting server to sort array");
         IntArray request = IntArray.newBuilder().addAllValues(Arrays.asList(values)).build();
          
-        double startTimeSort = System.nanoTime();
+        long startTimeSort = System.currentTimeMillis();
         IntArray response = serverStub.sortIntegers(request);
-        
-        double sortTime = response.getSortTime();
+        long sortTime = response.getSortTime();
+        long appTimeSort = System.currentTimeMillis() - startTimeSort;
+        long netTimeSort = appTimeSort - sortTime;
 
-	double estimatedTimeSort = (System.nanoTime() - startTimeSort)/1000000.;
-        double appThroughput = values.length/(estimatedTimeSort/1000.);
-	double netThroughput = values.length/((estimatedTimeSort-sortTime)/(2000.));
+        double appThroughput = values.length/(appTimeSort/1000.);
+        double netThroughput = values.length/(netTimeSort/2000.);
         
-	System.out.println("one-way ping latency is: " + estimatedTimePing + " ms"); 
-        System.out.println("Application throughput is: " + appThroughput); 
-        System.out.println("Network throughput is: " + netThroughput); 
+        System.out.println("Transfer time (adjust to >5s) = " + netTimeSort + " ms");
+        final Date currentTime = new Date();
+        final SimpleDateFormat sdf = new SimpleDateFormat("EEE, MMM dd, yyyy hh:mm:ss a z");
+        System.out.println("Current time = " + sdf.format(currentTime));
+        System.out.println("==================== RESULT ===================");
+        System.out.println("One-way latency = " + estimatedTimePing + " ms"); 
+        System.out.println("Application throughput = " + appThroughput + " int-per-second"); 
+        System.out.println("One-way network throughput = " + netThroughput + " int-per-second"); 
+        System.out.println("===============================================");
     }
 
     public void shutdown() throws InterruptedException {
